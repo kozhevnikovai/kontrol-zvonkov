@@ -44,4 +44,4 @@ writeFileSync(join(RAW, "timing.json"), JSON.stringify({ minutes: (Date.now() - 
 // отчёты для витрины
 const home = process.env.ZVONKI_OUT;
 if (home && existsSync(home)) log("отчёты в", home);
-void readFileSync;
+void readFileSync; // конец
