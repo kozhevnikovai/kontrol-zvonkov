@@ -28,6 +28,8 @@ export interface ProcessOptions {
   /** Обработать заново, даже если звонок уже в архиве */
   force?: boolean;
   llm?: LLM;
+  /** Модель по требованию (загрузится, только если есть что оценивать); владелец — вызывающий */
+  getLlm?: () => Promise<LLM>;
   signal?: AbortSignal;
   onProgress?: (e: ProgressEvent) => void;
 }
@@ -39,11 +41,11 @@ export async function processCalls(metas: CallMeta[], o: ProcessOptions = {}): P
   setOffline(c.offline);
   const script = o.script ?? (await resolveScript(c));
   const wantReview = o.review !== false;
-  if (wantReview && !o.llm && c.llm.provider !== "openai" && !c.llm.modelFile && missing(["llm"]).length) throw new Error("Нет языковой модели для оценки. Запустите: zvonki models (или обработайте с --no-review — только расшифровка и метрики)");
+  if (wantReview && !o.llm && !o.getLlm && c.llm.provider !== "openai" && !c.llm.modelFile && missing(["llm"]).length) throw new Error("Нет языковой модели для оценки. Запустите: zvonki models (или обработайте с --no-review — только расшифровка и метрики)");
   const glossary = parseGlossary(c.glossary ?? "");
   const voices = c.voices ? listVoices() : [];
   let llm = o.llm;
-  const own = !o.llm;
+  const own = !o.llm && !o.getLlm;
   const res: ProcessResult = { done: [], skipped: [], failed: [], model: "" };
   try {
     for (const [index, meta] of metas.entries()) {
@@ -71,7 +73,7 @@ export async function processCalls(metas: CallMeta[], o: ProcessOptions = {}): P
           if (tr.duration < (c.telephony.minSeconds ?? 0) || !tr.turns.length) {
             rec.review = (await import("./analyze/review.js")).emptyReview(tr, script, meta.id, "—", tr.turns.length ? `Разговор короче ${c.telephony.minSeconds} с — не оцениваем.` : "В записи нет речи: недозвон, автоответчик или тишина.");
           } else {
-            llm ??= await createLLM(c.llm);
+            llm ??= o.getLlm ? await o.getLlm() : await createLLM(c.llm);
             res.model = llm.name;
             rec.review = await reviewCall(llm, tr, script, { callId: meta.id, date: meta.date, signal: o.signal });
           }

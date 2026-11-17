@@ -6,7 +6,7 @@ export { netStats, setOffline, isOffline } from "./asr/net.js";
 export { maskText, mask } from "./asr/privacy.js";
 export { computeMetrics, metricHints, DEFAULT_STOP_WORDS } from "./analyze/metrics.js";
 export { TEMPLATES, getTemplate, parseScript, loadScript, scriptToMarkdown } from "./analyze/scripts.js";
-export { reviewCall, finalize, locate, scoreOf, mergeParts, splitTurns, emptyReview, systemPrompt, REVIEW_SCHEMA, OBJECTION_TYPES, OUTCOMES, INTEREST, MIN_WORDS, type RawReview } from "./analyze/review.js";
+export { reviewCall, finalize, locate, scoreOf, mergeParts, splitTurns, emptyReview, systemPrompt, REVIEW_SCHEMA, reviewSchema, OBJECTION_TYPES, OUTCOMES, INTEREST, MIN_WORDS, type RawReview } from "./analyze/review.js";
 export { createLLM, type LLM, type LLMOptions } from "./analyze/llm.js";
 export { scanFolder, readExport, buildMeta, parseCsv, parseFileName, parseDate, parseDirection, normPhone, maskPhone, resolveManager, mapColumns, PROVIDERS, AUDIO_EXT } from "./import/sources.js";
 export { TELEPHONY, listRemote, fetchRecordings, zadarmaSign, mangoSign, sipuniHash, httpsOnly } from "./import/telephony.js";

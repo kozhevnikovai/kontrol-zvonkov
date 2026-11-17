@@ -20,3 +20,4 @@ td .actions{display:flex;gap:6px;flex-wrap:wrap}
 .models input{width:auto;flex:none}
 #calls td:first-child,#calls th:first-child,#missed td:first-child{text-align:left}
 input[type=radio],input[type=checkbox]{width:auto}
+#calls td:nth-child(-n+3),#calls td:nth-child(6){white-space:nowrap}

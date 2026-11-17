@@ -181,7 +181,7 @@ const raw = (over: Partial<RawReview> = {}): RawReview => ({
   objections: [{ type: "price", client_quote: "у вас, наверное, дорого", manager_answer: "Цена зависит от профиля, есть вариант эконом", handled: "yes", better: "" }],
   next_step: { agreed: true, text: "Замер", due: "в четверг", quote: "записываю на замер в четверг в десять утра" },
   interest: { level: "high", quote: "хотели узнать, сколько стоят пластиковые окна" },
-  outcome: "sale", summary: "Клиент записан на замер.", advice: ["Спросить имя клиента"],
+  outcome: "sale", outcome_quote: "Ну давайте замер, если бесплатно", summary: "Клиент записан на замер.", advice: ["Спросить имя клиента"],
   ...over,
 });
 
@@ -240,6 +240,19 @@ describe("оценка: код проверяет цитаты и считает
   it("возражений нет — пункт про возражения «не применимо»", () => {
     const v = finalize(raw({ objections: [] }), tr, script, "abcdef0123456789", "2026-11-12", "test");
     expect(v.items.find(i => i.id === "objections")!.status).toBe("na");
+  });
+  it("продажа без слов клиента не засчитывается; договорённость без итога → «следующий шаг»", () => {
+    const v = finalize(raw({ outcome_quote: "беру два окна прямо сейчас" }), tr, script, "abcdef0123456789", "2026-11-12", "test");
+    expect(v.outcome).toBe("next_step");
+    expect(v.warnings.join(" ")).toMatch(/не подтверждён словами клиента/);
+    expect(finalize(raw(), tr, script, "abcdef0123456789", "2026-11-12", "test").outcome).toBe("sale");
+  });
+  it("схема ответа: пункты только с id скрипта, ровно по числу пунктов", async () => {
+    const { reviewSchema } = await import("../src/analyze/review.js");
+    const sc = reviewSchema(script) as any;
+    expect(sc.properties.items.items.properties.id.enum).toEqual(script.items.map(i => i.id));
+    expect(sc.properties.items.minItems).toBe(script.items.length);
+    expect(sc.required[0]).toBe("summary");
   });
   it("пустой звонок — без модели", () => {
     const v = emptyReview(tr, script, "abcdef0123456789", "—", "Недозвон");

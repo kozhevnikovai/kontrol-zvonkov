@@ -40,7 +40,7 @@ for (const [k, d] of set.entries()) {
   const turns = toTurns(d.turns);
   const tr = { file: d.id, duration: turns.length * 8, layout: "mono", turns, roles: { source: "order", confident: true }, stats: { asrSeconds: 0, rtf: 0, device: "" } };
   const sc = getTemplate("cold-b2b");
-  const v = await reviewCall(llm, tr, sc, { callId: "0000000000000000", date: "2026-11-01" });
+  const v = await reviewCall(llm, tr, sc, { callId: "0000000000000000", date: "2026-11-01", onRaw: r => { if (k < 2) console.log(`::notice title=raw ${model} ${d.id}::${JSON.stringify(r).slice(0, 3500)}`); } });
   const positive = v.outcome === "sale" || v.outcome === "next_step";
   b.push({ id: d.id, label: d.outcome, outcome: v.outcome, positive, score: v.score, missed: v.missed, quotes: v.quotes });
   console.log("B", d.id, d.outcome, v.outcome, v.score, `${v.quotes.verified}/${v.quotes.total}`);

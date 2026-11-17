@@ -33,7 +33,7 @@ async function runProcess(metas, c, o = {}) {
     const wantReview = o.review !== false;
     const r = await core.processCalls(metas, {
       config: c, review: wantReview, force: !!o.force, signal: ac.signal,
-      llm: wantReview && (c.llm.provider === "openai" || !core.missing(["llm"]).length) ? await getLlm(c) : undefined,
+      getLlm: wantReview && (c.llm.provider === "openai" || !core.missing(["llm"]).length) ? () => getLlm(c) : undefined,
       onProgress: e => send({ type: "progress", ...e, file: e.file.split(/[\\/]/).pop() }),
     });
     net();

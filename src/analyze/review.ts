@@ -45,30 +45,39 @@ export function locate(turns: Turn[], quote: string, role?: Role): number | null
   return null;
 }
 
-const SCHEMA = {
-  type: "object",
-  properties: {
-    is_sales: { type: "boolean" },
-    items: {
-      type: "array",
-      items: { type: "object", properties: { id: { type: "string" }, status: { enum: ["yes", "partial", "no", "na"] }, quote: { type: "string" }, comment: { type: "string" } }, required: ["id", "status", "quote", "comment"] },
-    },
-    objections: {
-      type: "array",
+/**
+ * JSON-схема ответа под конкретный скрипт: сначала краткое содержание (модель сперва читает звонок),
+ * затем «продажа ли это», пункты — ровно по id скрипта (грамматика не даст придумать свои), итог с цитатой.
+ */
+export function reviewSchema(script: Script) {
+  const ids = script.items.map(i => i.id);
+  return {
+    type: "object",
+    properties: {
+      summary: { type: "string" },
+      is_sales: { type: "boolean" },
       items: {
-        type: "object",
-        properties: { type: { enum: Object.keys(OBJECTION_TYPES) }, client_quote: { type: "string" }, manager_answer: { type: "string" }, handled: { enum: ["yes", "partial", "no"] }, better: { type: "string" } },
-        required: ["type", "client_quote", "manager_answer", "handled", "better"],
+        type: "array", minItems: ids.length, maxItems: ids.length,
+        items: { type: "object", properties: { id: { enum: ids }, status: { enum: ["yes", "partial", "no", "na"] }, quote: { type: "string" }, comment: { type: "string" } }, required: ["id", "status", "quote", "comment"] },
       },
+      objections: {
+        type: "array", maxItems: 8,
+        items: {
+          type: "object",
+          properties: { type: { enum: Object.keys(OBJECTION_TYPES) }, client_quote: { type: "string" }, manager_answer: { type: "string" }, handled: { enum: ["yes", "partial", "no"] }, better: { type: "string" } },
+          required: ["type", "client_quote", "manager_answer", "handled", "better"],
+        },
+      },
+      interest: { type: "object", properties: { level: { enum: ["high", "medium", "low", "none"] }, quote: { type: "string" } }, required: ["level", "quote"] },
+      next_step: { type: "object", properties: { agreed: { type: "boolean" }, text: { type: "string" }, due: { type: "string" }, quote: { type: "string" } }, required: ["agreed", "text", "due", "quote"] },
+      outcome: { enum: Object.keys(OUTCOMES) },
+      outcome_quote: { type: "string" },
+      advice: { type: "array", maxItems: 3, items: { type: "string" } },
     },
-    next_step: { type: "object", properties: { agreed: { type: "boolean" }, text: { type: "string" }, due: { type: "string" }, quote: { type: "string" } }, required: ["agreed", "text", "due", "quote"] },
-    interest: { type: "object", properties: { level: { enum: ["high", "medium", "low", "none"] }, quote: { type: "string" } }, required: ["level", "quote"] },
-    outcome: { enum: Object.keys(OUTCOMES) },
-    summary: { type: "string" },
-    advice: { type: "array", items: { type: "string" } },
-  },
-  required: ["is_sales", "items", "objections", "next_step", "interest", "outcome", "summary", "advice"],
-};
+    required: ["summary", "is_sales", "items", "objections", "interest", "next_step", "outcome", "outcome_quote", "advice"],
+  };
+}
+const SCHEMA = reviewSchema({ id: "x", title: "", description: "", items: [{ id: "p1", title: "", hint: "", weight: 1 }] });
 
 interface Raw {
   is_sales: boolean;
@@ -77,6 +86,7 @@ interface Raw {
   next_step: { agreed: boolean; text: string; due: string; quote: string };
   interest: { level: Interest; quote: string };
   outcome: Outcome;
+  outcome_quote?: string;
   summary: string;
   advice: string[];
 }
@@ -91,8 +101,10 @@ export function systemPrompt(script: Script): string {
     "4. Возражения — только реальные сомнения КЛИЕНТА: client_quote — дословно его слова, manager_answer — дословный ответ менеджера или пустая строка, если не ответил. better — коротко, как ответить лучше (1–2 предложения).",
     "5. next_step.agreed = true, только если обе стороны договорились о конкретном действии (встреча, звонок в определённый день, счёт, запись, заказ). quote — дословные слова этой договорённости. due — срок словами из звонка или пустая строка.",
     "6. interest — интерес клиента к покупке: high (хочет купить, спрашивает цену, сроки, оплату), medium (интересуется, но сомневается), low, none. quote — дословные слова клиента или пустая строка.",
-    "7. is_sales = false, если звонок не про продажу или запись (личный разговор, ошибка номера, служебный звонок). Тогда outcome = not_sales, все пункты na.",
-    "8. summary — 1–2 предложения: о чём звонок и чем закончился. advice — до трёх конкретных советов менеджеру по этому звонку.",
+    "7. summary — сначала: 1–2 предложения, о чём звонок и чем закончился.",
+    "8. is_sales = true, если менеджер предлагает, продаёт, консультирует о товаре или услуге, записывает или клиент спрашивает о покупке, цене, условиях — даже если продажа не состоялась. is_sales = false только для разговоров не о покупке: личный разговор, ошибка номера, служебный звонок. Тогда outcome = not_sales, все пункты na.",
+    "9. outcome: sale — клиент прямо в звонке согласился купить, оплатить, оформить или записаться; next_step — договорились о конкретном следующем шаге (встреча, демонстрация, звонок в определённый день, счёт, КП с датой созвона); refusal — клиент явно отказался; no_decision — ничего из этого. outcome_quote — дословные слова клиента, подтверждающие sale или refusal, иначе пустая строка.",
+    "10. advice — до трёх конкретных советов менеджеру по этому звонку.",
     "",
     `Скрипт «${script.title}»:`,
     ...script.items.map(i => `- id=${i.id}: ${i.title}. Выполнено, если: ${i.hint}`),
@@ -117,6 +129,7 @@ export function mergeParts(parts: Raw[]): Raw {
     next_step: agreed?.next_step ?? last.next_step,
     interest,
     outcome: parts.some(p => p.outcome === "sale") ? "sale" : last.outcome,
+    outcome_quote: parts.find(p => p.outcome === "sale")?.outcome_quote ?? last.outcome_quote ?? "",
     summary: parts.map(p => p.summary).filter(Boolean).join(" "),
     advice: [...new Set(parts.flatMap(p => p.advice ?? []))].slice(0, 3),
   };
@@ -195,7 +208,13 @@ export function finalize(raw: Raw, tr: CallTranscript, script: Script, callId: s
 
   let outcome: Outcome = sales ? (OUTCOMES[raw.outcome] ? raw.outcome : "no_decision") : "not_sales";
   if (outcome === "not_sales" && sales) outcome = "no_decision";
+  // продажа и отказ — только со словами клиента; договорённость — только с цитатой
+  if ((outcome === "sale" || outcome === "refusal") && check(raw.outcome_quote ?? "", "client") === null) {
+    warnings.push(`Итог «${OUTCOMES[outcome]}» не подтверждён словами клиента — заменён`);
+    outcome = agreed ? "next_step" : "no_decision";
+  }
   if (outcome === "next_step" && !agreed) outcome = "no_decision";
+  if (outcome === "no_decision" && agreed) outcome = "next_step";
   const missed = sales && outcome !== "sale" && !agreed && (level === "high" || level === "medium");
   const missedReason = missed ? (outcome === "refusal" ? "Клиент проявил интерес, но разговор закончился отказом без попытки договориться о следующем шаге" : "Клиент проявил интерес, но конкретный следующий шаг не назначен") : "";
   const score = sales ? scoreOf(items, script) : null;
@@ -224,7 +243,7 @@ export function emptyReview(tr: CallTranscript, script: Script, callId: string, 
 
 export const wordsIn = (tr: CallTranscript) => tr.turns.reduce((n, t) => n + t.text.split(/\s+/).filter(Boolean).length, 0);
 
-export async function reviewCall(llm: LLM, tr: CallTranscript, script: Script, o: { callId: string; date: string; signal?: AbortSignal }): Promise<Review> {
+export async function reviewCall(llm: LLM, tr: CallTranscript, script: Script, o: { callId: string; date: string; signal?: AbortSignal; onRaw?: (raw: unknown) => void }): Promise<Review> {
   const words = wordsIn(tr);
   if (words < MIN_WORDS) return emptyReview(tr, script, o.callId, "—", words === 0 ? "В записи нет речи: недозвон, автоответчик или тишина." : "Очень короткий разговор — оценивать по скрипту нечего.");
   if (!tr.turns.some(t => t.role === "client") || !tr.turns.some(t => t.role === "manager")) return emptyReview(tr, script, o.callId, "—", "В записи говорит только одна сторона — оценивать по скрипту нечего.");
@@ -233,7 +252,9 @@ export async function reviewCall(llm: LLM, tr: CallTranscript, script: Script, o
   const raws: Raw[] = [];
   for (const [k, p] of parts.entries()) {
     const head = parts.length > 1 ? `Это часть ${k + 1} из ${parts.length} длинного звонка.\n` : "";
-    raws.push(await llm.json<Raw>(sys, `${head}<звонок>\n${callText({ turns: p })}\n</звонок>`, SCHEMA, 2500, { signal: o.signal }));
+    const raw = await llm.json<Raw>(sys, `${head}<звонок>\n${callText({ turns: p })}\n</звонок>`, reviewSchema(script), 3000, { signal: o.signal });
+    o.onRaw?.(raw);
+    raws.push(raw);
   }
   return finalize(mergeParts(raws), tr, script, o.callId, o.date, llm.name);
 }

@@ -19,7 +19,7 @@ async function core(m, a) { try { return await kz.core(m, a); } catch (e) { toas
 const day = d => d.toISOString().slice(0, 10);
 const since = n => (Number(n) ? day(new Date(Date.now() - Number(n) * 86400_000)) : undefined);
 const ruDT = iso => { const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}.${m}.${y.slice(2)} ${iso.slice(11, 16)}`; };
-const dur = s => (s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : `0:${String(Math.round(s)).padStart(2, "0")}`);
+const dur = s => { const t = Math.round(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
 const tc = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const scCls = s => (s == null ? "" : s >= 75 ? "ok" : s >= 50 ? "warn" : "bad");
 const score = s => `<span class="sc ${scCls(s)}">${s ?? "—"}</span>`;
