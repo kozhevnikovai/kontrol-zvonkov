@@ -22,6 +22,8 @@ jobs:
       - run: npm ci && npm run build
       - uses: actions/cache@v6
         with: { path: ~/kz/models, key: "llm-${{ matrix.model }}-v1" }
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
       - run: mkdir -p ~/kz/datahive && pip install pyarrow && python evals/prepare.py evals/sales.json ${{ inputs.dialogs || 20 }}
       - run: node dist/cli.js models --model ${{ matrix.model }}
       - run: npm run eval || echo "::warning::${{ matrix.model }} ниже порога"

@@ -1,5 +1,7 @@
 name: ci
-on: [push, pull_request]
+on:
+  push: { branches: [main, "feat/**", "release/**"] }
+  pull_request:
 jobs:
   test:
     strategy:

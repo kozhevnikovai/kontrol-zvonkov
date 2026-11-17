@@ -1,6 +1,6 @@
 // Контроль звонков — настольное приложение (Electron). Главный процесс: окно, фоновый обработчик, ключи, PDF, загрузка по расписанию.
 import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, shell, utilityProcess } from "electron";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -45,7 +45,11 @@ let seq = 0;
 let busy = false;
 
 function startWorker() {
-  worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Контроль звонков: обработка", stdio: "inherit", env: { ...process.env } });
+  worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Контроль звонков: обработка", stdio: "pipe", env: { ...process.env } });
+  // журнал обработчика — для диагностики (без содержимого звонков: только служебные сообщения библиотек и ошибки)
+  mkdirSync(home(), { recursive: true });
+  const logTo = c => { try { appendFileSync(join(home(), "worker.log"), c); } catch { /* нет доступа */ } process.stderr.write(c); };
+  worker.stdout?.on("data", logTo); worker.stderr?.on("data", logTo);
   worker.on("message", m => {
     if (["progress", "net", "fetched", "team"].includes(m.type)) {
       if (m.type === "fetched" && m.count > 0 && !win?.isFocused() && Notification.isSupported()) new Notification({ title: "Контроль звонков", body: `Загружено и разобрано звонков: ${m.count}${m.missed ? `, упущенных сделок: ${m.missed}` : ""}` }).show();
@@ -56,7 +60,7 @@ function startWorker() {
     pending.delete(m.id);
     m.error ? p.reject(new Error(m.error)) : p.resolve(m.result);
   });
-  worker.on("exit", () => { for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
+  worker.on("exit", code => { if (code) try { appendFileSync(join(home(), "worker.log"), `[${new Date().toISOString()}] обработчик завершился, код ${code}\n`); } catch { /* нет доступа */ } for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
 }
 function call(method, args) {
   if (!worker) startWorker();

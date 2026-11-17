@@ -28,6 +28,9 @@ await win.click("#pick-dir"); await win.waitForSelector("#import-box:not([hidden
 const t0 = Date.now();
 await win.click("#imp-go"); await win.waitForTimeout(8000); await snap("app-progress");
 await win.waitForSelector("#work[hidden]", { state: "attached", timeout: 3 * 3600e3 }); log("разбор, мин", ((Date.now() - t0) / 60000).toFixed(1));
+const toasts = await win.evaluate(() => document.querySelector("#toasts").innerText);
+log("сообщения:", toasts);
+if (!(await win.$("#calls tr[data-id]"))) { const wl = join(process.env.ZVONKI_HOME ?? "", "worker.log"); console.error(existsSync(wl) ? (await import("node:fs")).readFileSync(wl, "utf8").slice(-4000) : "нет журнала"); await win.screenshot({ path: join(OUT, "fail.png") }); process.exit(1); }
 await win.waitForTimeout(2500); await snap("app-calls");
 // карточка звонка с наибольшим числом реплик продажи (если есть), иначе первая
 await win.click("#calls tr[data-id]"); await win.waitForTimeout(1500); await snap("app-call");
