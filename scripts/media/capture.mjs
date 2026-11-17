@@ -1,11 +1,15 @@
 // Съёмка настоящей работы Контроля звонков: открытые телефонные разговоры DataHive (CC BY 4.0, стерео) → разбор в приложении.
 // Имена сотрудников условные («Сотрудник 1–3»): в наборе их нет. Окна выбора папки и файла подменяются в главном процессе.
 import { _electron as electron } from "playwright-core";
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 const OUT = "media", RAW = "media/raw", DATA = resolve(process.env.ZVONKI_DATA ?? "media/calls");
 mkdirSync(RAW, { recursive: true }); mkdirSync(DATA, { recursive: true });
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+// ошибки — аннотацией GitHub Actions (видна в сводке запуска)
+const annotate = (msg) => console.log("::error::" + String(msg).slice(0, 3000).replace(/%/g, "%25").replace(/\r?\n/g, "%0A"));
+process.on("uncaughtException", e => { const wl = join(process.env.ZVONKI_HOME ?? "", "worker.log"); annotate(`${e?.stack ?? e}\n--- worker.log ---\n${existsSync(wl) ? readFileSync(wl, "utf8").slice(-1500) : "нет"}`); process.exit(1); });
+process.on("unhandledRejection", e => { throw e; });
 const DH = "https://huggingface.co/datasets/datahiveai/russian-conversations-sample/resolve/main/preview";
 const meta = (await (await fetch(`${DH}/metadata.jsonl`)).text()).split("\n").filter(Boolean).map(l => JSON.parse(l)).filter(m => m.duration_seconds < 420).slice(0, Number(process.env.MEDIA_CALLS ?? 6));
 const rows = ["Имя файла;Сотрудник;Тип звонка"];
@@ -30,7 +34,7 @@ await win.click("#imp-go"); await win.waitForTimeout(8000); await snap("app-prog
 await win.waitForSelector("#work[hidden]", { state: "attached", timeout: 3 * 3600e3 }); log("разбор, мин", ((Date.now() - t0) / 60000).toFixed(1));
 const toasts = await win.evaluate(() => document.querySelector("#toasts").innerText);
 log("сообщения:", toasts);
-if (!(await win.$("#calls tr[data-id]"))) { const wl = join(process.env.ZVONKI_HOME ?? "", "worker.log"); console.error(existsSync(wl) ? (await import("node:fs")).readFileSync(wl, "utf8").slice(-4000) : "нет журнала"); await win.screenshot({ path: join(OUT, "fail.png") }); process.exit(1); }
+if (!(await win.$("#calls tr[data-id]"))) { const wl = join(process.env.ZVONKI_HOME ?? "", "worker.log"); annotate(`звонки не разобраны: ${toasts}\n${existsSync(wl) ? readFileSync(wl, "utf8").slice(-1500) : "нет журнала"}`); await win.screenshot({ path: join(OUT, "fail.png") }); process.exit(1); }
 await win.waitForTimeout(2500); await snap("app-calls");
 // карточка звонка с наибольшим числом реплик продажи (если есть), иначе первая
 await win.click("#calls tr[data-id]"); await win.waitForTimeout(1500); await snap("app-call");

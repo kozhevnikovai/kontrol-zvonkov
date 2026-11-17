@@ -6,3 +6,4 @@ release/
 .DS_Store
 evals/results.json
 evals/sales.json
+media/
