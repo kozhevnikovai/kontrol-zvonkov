@@ -56,6 +56,7 @@ export function reviewSchema(script: Script) {
     properties: {
       summary: { type: "string" },
       is_sales: { type: "boolean" },
+      sales_quote: { type: "string" },
       items: {
         type: "array", minItems: ids.length, maxItems: ids.length,
         items: { type: "object", properties: { id: { enum: ids }, status: { enum: ["yes", "partial", "no", "na"] }, quote: { type: "string" }, comment: { type: "string" } }, required: ["id", "status", "quote", "comment"] },
@@ -74,13 +75,14 @@ export function reviewSchema(script: Script) {
       outcome_quote: { type: "string" },
       advice: { type: "array", maxItems: 3, items: { type: "string" } },
     },
-    required: ["summary", "is_sales", "items", "objections", "interest", "next_step", "outcome", "outcome_quote", "advice"],
+    required: ["summary", "is_sales", "sales_quote", "items", "objections", "interest", "next_step", "outcome", "outcome_quote", "advice"],
   };
 }
 const SCHEMA = reviewSchema({ id: "x", title: "", description: "", items: [{ id: "p1", title: "", hint: "", weight: 1 }] });
 
 interface Raw {
   is_sales: boolean;
+  sales_quote?: string;
   items: { id: string; status: ItemStatus; quote: string; comment: string }[];
   objections: { type: ObjectionType; client_quote: string; manager_answer: string; handled: "yes" | "partial" | "no"; better: string }[];
   next_step: { agreed: boolean; text: string; due: string; quote: string };
@@ -102,7 +104,7 @@ export function systemPrompt(script: Script): string {
     "5. next_step.agreed = true, только если обе стороны договорились о конкретном действии (встреча, звонок в определённый день, счёт, запись, заказ). quote — дословные слова этой договорённости. due — срок словами из звонка или пустая строка.",
     "6. interest — интерес клиента к покупке: high (хочет купить, спрашивает цену, сроки, оплату), medium (интересуется, но сомневается), low, none. quote — дословные слова клиента или пустая строка.",
     "7. summary — сначала: 1–2 предложения, о чём звонок и чем закончился.",
-    "8. is_sales = true, если менеджер предлагает, продаёт, консультирует о товаре или услуге, записывает или клиент спрашивает о покупке, цене, условиях — даже если продажа не состоялась. is_sales = false только для разговоров не о покупке: личный разговор, ошибка номера, служебный звонок. Тогда outcome = not_sales, все пункты na.",
+    "8. is_sales = true, если менеджер предлагает, продаёт, консультирует о товаре или услуге компании, записывает или клиент спрашивает о покупке, цене, условиях — даже если продажа не состоялась. sales_quote — дословные слова из звонка (5–20 слов), где называется товар или услуга, цена, условия, предложение купить или записаться. Личный разговор знакомых, разговор об играх, хобби, семье, ошибка номера, служебный звонок — не продажа, даже если в нём упоминаются деньги или покупки: тогда is_sales = false, sales_quote — пустая строка, outcome = not_sales, все пункты na.",
     "9. outcome: sale — клиент прямо в звонке согласился купить, оплатить, оформить или записаться; next_step — договорились о конкретном следующем шаге (встреча, демонстрация, звонок в определённый день, счёт, КП с датой созвона); refusal — клиент явно отказался; no_decision — ничего из этого. outcome_quote — дословные слова клиента, подтверждающие sale или refusal, иначе пустая строка.",
     "10. advice — до трёх конкретных советов менеджеру по этому звонку.",
     "",
@@ -124,6 +126,7 @@ export function mergeParts(parts: Raw[]): Raw {
   const interest = parts.map(p => p.interest).filter(Boolean).sort((a, b) => lv.indexOf(b.level) - lv.indexOf(a.level))[0] ?? { level: "none", quote: "" };
   return {
     is_sales: parts.some(p => p.is_sales),
+    sales_quote: parts.find(p => p.is_sales && p.sales_quote?.trim())?.sales_quote ?? "",
     items: [...items.values()],
     objections: parts.flatMap(p => p.objections ?? []),
     next_step: agreed?.next_step ?? last.next_step,
@@ -170,7 +173,12 @@ export function finalize(raw: Raw, tr: CallTranscript, script: Script, callId: s
     if (t !== null) verified++;
     return t;
   };
-  const sales = raw.is_sales !== false && raw.outcome !== "not_sales";
+  // «продажа» — только со словами о товаре, цене или предложении, которые есть в записи
+  let sales = raw.is_sales !== false && raw.outcome !== "not_sales";
+  if (sales && check(raw.sales_quote ?? "") === null) {
+    sales = false;
+    warnings.push("Модель сочла звонок продажей, но не привела слов о товаре, цене или предложении из записи — помечен «не продажа», послушайте запись");
+  }
   const byId = new Map((raw.items ?? []).map(i => [i.id, i]));
   const objections: Objection[] = (sales ? raw.objections ?? [] : [])
     .filter(o => o.client_quote?.trim())

@@ -166,6 +166,7 @@ describe("скрипты", () => {
 const script = getTemplate("incoming");
 const raw = (over: Partial<RawReview> = {}): RawReview => ({
   is_sales: true,
+  sales_quote: "есть вариант эконом от двенадцати тысяч за окно",
   items: [
     { id: "greet", status: "yes", quote: "компания Окна Плюс, меня зовут Анна", comment: "" },
     { id: "name", status: "no", quote: "", comment: "имя не спросила" },
@@ -222,6 +223,14 @@ describe("оценка: код проверяет цитаты и считает
     const v = finalize(raw({ interest: { level: "high", quote: "очень хочу купить прямо сейчас" }, next_step: { agreed: false, text: "", due: "", quote: "" }, outcome: "no_decision" }), tr, script, "abcdef0123456789", "2026-11-12", "test");
     expect(v.interest.level).toBe("low");
     expect(v.missed).toBe(false);
+  });
+  it("продажа без слов о товаре или цене из записи → «не продажа»", () => {
+    for (const q of ["", "хочу быть детективом в этой игре"]) {
+      const v = finalize(raw({ sales_quote: q }), tr, script, "abcdef0123456789", "2026-11-12", "test");
+      expect(v.outcome).toBe("not_sales");
+      expect(v.score).toBeNull();
+      expect(v.missed).toBe(false);
+    }
   });
   it("не продажа: балла нет, пункты «не применимо»", () => {
     const v = finalize(raw({ is_sales: false, outcome: "not_sales" }), tr, script, "abcdef0123456789", "2026-11-12", "test");
