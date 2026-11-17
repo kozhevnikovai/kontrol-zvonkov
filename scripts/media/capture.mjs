@@ -38,8 +38,15 @@ const toasts = await win.evaluate(() => document.querySelector("#toasts").innerT
 log("сообщения:", toasts);
 if (!(await win.$("#calls tr[data-id]"))) { const wl = join(process.env.ZVONKI_HOME ?? "", "worker.log"); annotate(`звонки не разобраны: ${toasts}\n${existsSync(wl) ? readFileSync(wl, "utf8").slice(-1500) : "нет журнала"}`); await win.screenshot({ path: join(OUT, "fail.png") }); process.exit(1); }
 await win.waitForTimeout(2500); await snap("app-calls");
-// карточка звонка с наибольшим числом реплик продажи (если есть), иначе первая
-await win.click("#calls tr[data-id]"); await win.waitForTimeout(1500); await snap("app-call");
+// карточка звонка: самый содержательный разговор без нецензурной лексики (это личные звонки из открытого набора)
+const { readdirSync } = await import("node:fs");
+const arch = join(process.env.ZVONKI_HOME ?? "", "calls");
+const BAD = /(бля|ху[йяеёи]|пизд|[её]б[аеуы]|нахуй|сук[аи])/i;
+const recs = readdirSync(arch, { withFileTypes: true }).filter(d => d.isDirectory() && !d.name.startsWith(".")).flatMap(d => readdirSync(join(arch, d.name)).filter(f => f.endsWith(".json")).map(f => JSON.parse(readFileSync(join(arch, d.name, f), "utf8"))));
+const clean = recs.filter(r => !r.transcript.turns.some(t => BAD.test(t.text)) && !BAD.test(r.review?.summary ?? "")).sort((a, b) => b.transcript.turns.length - a.transcript.turns.length);
+log("без мата:", clean.length, "из", recs.length);
+if (clean[0]) { await win.evaluate(id => window.__kzShow(null, id), clean[0].meta.id); } else { await win.click("#calls tr[data-id]"); }
+await win.waitForTimeout(1500); await snap("app-call");
 for (const [i, y] of [[1, 600], [2, 1300]]) { await win.evaluate(y => document.querySelector("main").scrollTo({ top: y, behavior: "smooth" }), y); await win.waitForTimeout(1400); await snap("app-call-" + i); }
 await nav("managers"); await snap("app-managers");
 await win.click("#mgr-cards .mgr"); await win.waitForTimeout(1500); await snap("app-manager");
