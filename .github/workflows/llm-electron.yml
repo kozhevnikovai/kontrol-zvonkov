@@ -1,0 +1,29 @@
+name: llm-electron
+# Языковая модель внутри Electron на Windows, macOS и Linux (как в фоновом обработчике приложения)
+on:
+  workflow_dispatch:
+  push: { branches: ['evals/**'] }
+jobs:
+  load:
+    strategy:
+      fail-fast: false
+      matrix: { os: [ubuntu-latest, windows-latest, macos-latest] }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env: { ZVONKI_LLM_MODEL: qwen3-4b }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci && npm run build
+      - uses: actions/cache@v6
+        with: { path: ~/.kz/models/llm, key: "llm-qwen3-4b-${{ runner.os }}-v1" }
+      - name: Модель
+        shell: bash
+        run: ZVONKI_HOME="$HOME/.kz" node dist/cli.js models --model qwen3-4b
+      - name: Node.js
+        shell: bash
+        run: ZVONKI_HOME="$HOME/.kz" node test/electron-llm.mjs
+      - name: Electron
+        shell: bash
+        run: ZVONKI_HOME="$HOME/.kz" ELECTRON_RUN_AS_NODE=1 npx electron test/electron-llm.mjs
