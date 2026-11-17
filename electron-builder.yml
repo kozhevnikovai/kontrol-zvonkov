@@ -1,0 +1,58 @@
+appId: ai.kozhevnikov.kontrol-zvonkov
+productName: Контроль звонков
+executableName: KontrolZvonkov
+copyright: © 2026 Egor Kozhevnikov · MIT
+artifactName: KontrolZvonkov-${version}-${os}-${arch}.${ext}
+extraMetadata:
+  main: app/main.mjs
+directories:
+  output: release
+  buildResources: app/assets
+npmRebuild: false
+files:
+  - dist/**
+  - app/**
+  - "!app/assets/**"
+  - package.json
+  - "!**/*.map"
+  - "!node_modules/@node-llama-cpp/*cuda*/**"
+asarUnpack:
+  - node_modules/sherpa-onnx-*/**
+  - node_modules/ffmpeg-static/**
+  - node_modules/@node-llama-cpp/**
+  - node_modules/node-llama-cpp/**
+win:
+  # установщик и портативная версия (zip — без установки, если Windows не даёт запустить установщик)
+  target: [{ target: nsis, arch: [x64] }, { target: zip, arch: [x64] }]
+  icon: app/assets/icon.ico
+  files:
+    - "!node_modules/sherpa-onnx-darwin-*/**"
+    - "!node_modules/sherpa-onnx-linux-*/**"
+    - "!node_modules/sherpa-onnx-win-arm64/**"
+    - "!node_modules/sherpa-onnx-win-ia32/**"
+    - "!node_modules/@node-llama-cpp/mac-*/**"
+    - "!node_modules/@node-llama-cpp/linux-*/**"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Контроль звонков
+  language: "1049"
+  installerIcon: app/assets/icon.ico
+  uninstallerIcon: app/assets/icon.ico
+  # вопрос «удалить модели и настройки?» при удалении программы
+  include: app/assets/installer.nsh
+mac:
+  target: [{ target: dmg, arch: [arm64, x64] }]
+  icon: app/assets/icon.icns
+  category: public.app-category.productivity
+  identity: null
+  hardenedRuntime: false
+  files:
+    - "!node_modules/sherpa-onnx-win-*/**"
+    - "!node_modules/sherpa-onnx-linux-*/**"
+    - "!node_modules/@node-llama-cpp/win-*/**"
+    - "!node_modules/@node-llama-cpp/linux-*/**"
+dmg:
+  title: Контроль звонков

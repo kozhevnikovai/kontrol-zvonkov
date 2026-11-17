@@ -1,0 +1,18 @@
+/* Дополнения Контроля звонков к общему светлому стилю */
+section.wide{max-width:1080px}
+.drop .small-row{margin-top:4px}
+.filters{margin:24px 0 8px}.filters .search{flex:1;margin:0}.filters select{width:auto;min-height:44px}
+table.calls td.num,table td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sc{display:inline-block;min-width:38px;text-align:center;font-weight:600;border-radius:999px;padding:1px 8px;font-size:13px;background:var(--plate);color:var(--pencil)}
+.sc.ok{background:var(--okbg);color:var(--ok)}.sc.warn{background:var(--warnbg);color:var(--warn)}.sc.bad{background:var(--badbg);color:var(--bad)}
+.st{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}.st.yes{color:var(--ok);background:var(--okbg)}.st.partial{color:var(--warn);background:var(--warnbg)}.st.no{color:var(--bad);background:var(--badbg)}.st.na{color:var(--pencil);background:var(--plate)}
+q{color:var(--pencil);font-size:13px}q:before{content:"«"}q:after{content:"»"}
+.chat p{margin:4px 0;display:grid;grid-template-columns:54px 84px 1fr;gap:10px;font-size:14px}.chat .who{font-size:12px;color:var(--pencil)}.chat .m .who{color:var(--acc);font-weight:600}.chat .tc{font-size:12px;color:var(--pencil)}
+.flag{display:inline-block;background:var(--badbg);color:var(--bad);border-radius:8px;padding:2px 10px;font-size:13px;font-weight:600}
+.advice{background:var(--plate);border-radius:10px;padding:10px 14px;margin-top:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media (max-width:1000px){.two{grid-template-columns:1fr}}
+.card.mgr{cursor:pointer}.card.mgr:hover{border-color:var(--acc)}.card.mgr b.big{font-size:26px;font-weight:600;display:block}
+.rate{display:grid;grid-template-columns:1fr 140px 48px;gap:10px;align-items:center;margin:6px 0;font-size:14px}.rate .bar{margin:0}
+.tpl.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.warnline{color:var(--warn);font-size:13px}
+td .actions{display:flex;gap:6px;flex-wrap:wrap}

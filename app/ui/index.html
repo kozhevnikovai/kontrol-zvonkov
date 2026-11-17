@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:">
+<title>Контроль звонков</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="calls.css">
+</head>
+<body>
+<aside>
+  <div class="brand"><img src="icon.png" width="36" height="36" alt="">
+    <div><b>Контроль звонков</b><span id="ver">v1.0.0</span></div></div>
+  <nav>
+    <button data-view="calls" class="on">Звонки</button>
+    <button data-view="managers">Менеджеры</button>
+    <button data-view="summary">Сводка</button>
+    <button data-view="missed">Упущенные сделки <i class="pill" id="missed-n" hidden></i></button>
+    <button data-view="script">Скрипт</button>
+    <button data-view="settings">Настройки</button>
+  </nav>
+  <button class="job" id="job" hidden><b id="job-t"></b><span class="bar thin"><i></i></span><small id="job-s"></small></button>
+  <div class="net" id="net"><i></i><span>Сеть: 0 байт</span><small>всё обрабатывается на этом компьютере</small></div>
+</aside>
+
+<main>
+  <section id="v-setup" hidden>
+    <div class="kicker">Первый запуск</div>
+    <h1>Скачать модели</h1>
+    <p class="lead">Один раз. Дальше разбор звонков идёт без интернета: записи и тексты не покидают компьютер. Если уже стоит Протоколист, его модели используются повторно.</p>
+    <div class="models" id="models-setup"></div>
+    <ul id="packs" class="plain packs"></ul>
+    <div class="row"><button class="primary" id="dl">Скачать</button><button class="ghost" id="dl-asr">Только распознавание</button></div>
+    <div id="dl-box" hidden><div class="bar" id="dlbar"><i></i><span></span></div><p class="note" id="dl-info"></p></div>
+  </section>
+
+  <section id="v-calls" class="wide">
+    <div class="kicker">Звонки</div>
+    <h1>Записи звонков → оценка по скрипту</h1>
+    <p class="lead">Перетащите папку с записями (mp3, wav, ogg, m4a) или выберите её. Выгрузка телефонии добавит менеджеров, номера и направление звонков.</p>
+    <div class="gate" id="gate" hidden><span>Чтобы разбирать звонки, сначала скачайте модели.</span><button class="primary" data-go="setup">Скачать модели</button></div>
+    <div class="drop" id="drop">
+      <b>Перетащите сюда папку или файлы записей</b>
+      <div class="row"><button class="primary" id="pick-dir">Выбрать папку</button><button class="ghost" id="pick-files">Выбрать файлы</button><button class="ghost" id="fetch" hidden>Загрузить из телефонии</button></div>
+      <div class="row small-row"><button class="link" id="pick-export">Добавить выгрузку телефонии (CSV/XLSX)</button><span class="note" id="export-name"></span></div>
+    </div>
+    <div class="panel" id="import-box" hidden>
+      <p id="import-info"></p>
+      <label class="check"><input type="checkbox" id="imp-review" checked> Оценить по скрипту (языковая модель на этом компьютере)</label>
+      <div class="row"><button class="primary" id="imp-go">Разобрать</button><button class="ghost" id="imp-cancel">Отмена</button></div>
+    </div>
+    <div class="panel" id="work" hidden>
+      <div class="row"><b id="work-t">Разбор звонков</b><button class="ghost" id="work-stop">Остановить</button></div>
+      <div class="bar" id="wbar"><i></i><span></span></div><p class="note" id="work-s"></p>
+    </div>
+    <div class="filters row wrap">
+      <input id="f-q" class="search" placeholder="Поиск по словам из звонков и менеджеру">
+      <select id="f-period"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="0">Всё время</option></select>
+      <select id="f-mgr"><option value="">Все менеджеры</option></select>
+    </div>
+    <table class="list calls" id="calls"></table>
+    <p class="note" id="calls-empty" hidden>Звонков пока нет — выберите папку с записями.</p>
+  </section>
+
+  <section id="v-call" class="wide" hidden>
+    <button class="link" data-go="calls">← Все звонки</button>
+    <div id="call"></div>
+  </section>
+
+  <section id="v-managers" class="wide" hidden>
+    <div class="kicker">Менеджеры</div>
+    <h1>Кто как продаёт</h1>
+    <div class="row"><select id="m-period"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="0">Всё время</option></select></div>
+    <div class="cards" id="mgr-cards"></div>
+    <div id="mgr"></div>
+  </section>
+
+  <section id="v-summary" class="wide" hidden>
+    <div class="kicker">Сводка</div>
+    <h1>Звонки отдела за период</h1>
+    <div class="row wrap"><label>С <input type="date" id="s-from"></label><label>По <input type="date" id="s-to"></label>
+      <button class="ghost" id="s-html">HTML</button><button class="ghost" id="s-xlsx">Excel</button><button class="ghost" id="s-pdf">PDF</button><button class="ghost" id="s-tg" hidden>В Telegram</button></div>
+    <div id="sum"></div>
+  </section>
+
+  <section id="v-missed" class="wide" hidden>
+    <div class="kicker">Упущенные сделки</div>
+    <h1>Клиент интересовался — следующий шаг не назначен</h1>
+    <p class="lead">Перезвоните или отправьте в CRM: сделка и задача «перезвонить» создадутся в подключённых amoCRM, Битрикс24, YouGile или придут в Telegram.</p>
+    <div class="row"><select id="x-period"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="0">Всё время</option></select>
+      <label class="check small"><input type="checkbox" id="x-open" checked> Только необработанные</label></div>
+    <table class="list" id="missed"></table>
+  </section>
+
+  <section id="v-script" hidden>
+    <div class="kicker">Скрипт продаж</div>
+    <h1>По какому скрипту оценивать</h1>
+    <p class="lead">Выберите шаблон или загрузите свой скрипт: MD, TXT, Word или Excel. Каждый пункт — отдельная строка: «Выявил потребность — задал 2 вопроса о задаче (вес 2, обязательно)».</p>
+    <div class="cards" id="tpls"></div>
+    <div class="row"><button class="ghost" id="own-script">Загрузить свой скрипт</button></div>
+    <div class="panel"><h2 id="sc-title"></h2><table id="sc-items"></table></div>
+  </section>
+
+  <section id="v-settings" hidden>
+    <div class="kicker">Настройки</div>
+    <h1>Настройки</h1>
+    <h2>Языковая модель</h2>
+    <p class="note" id="hw"></p>
+    <div class="models" id="models"></div>
+    <h2>Менеджеры и записи</h2>
+    <label>Справочник менеджеров: внутренний номер, телефон или имя из выгрузки = имя в отчётах<textarea id="managers" rows="4" placeholder="101 = Иванова Анна&#10;+79001234567 = Петров Пётр"></textarea></label>
+    <div class="grid2">
+      <label>Менеджер в стереозаписи<select id="channel"><option value="auto">Определять автоматически</option><option value="0">Левый канал</option><option value="1">Правый канал</option></select></label>
+      <label>Не оценивать звонки короче, с<input type="number" id="min-sec" min="0" max="600"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="show-phones"> Показывать номера клиентов полностью (иначе +7 9** ***-12-34)</label>
+    <label class="check"><input type="checkbox" id="voices"> Узнавать менеджеров по голосу (отпечаток голоса хранится только на этом компьютере; нужно согласие сотрудников)</label>
+    <label>Словарь компании: названия товаров и услуг, по строке<textarea id="glossary" rows="2" placeholder="Битрикс24 = битрикс двадцать четыре"></textarea></label>
+    <div class="grid2"><label>Папка архива (сетевая папка — общий архив отдела)<span class="inline"><input id="archive"><button class="ghost" data-pick="archive">Обзор</button></span></label>
+      <label>Папка отчётов<span class="inline"><input id="outdir"><button class="ghost" data-pick="outdir">Обзор</button></span></label></div>
+    <label class="check"><input type="checkbox" id="offline"> Строгий офлайн: никаких запросов в сеть (выключите, чтобы подключить телефонию и CRM)</label>
+    <div class="row"><button class="primary" id="save">Сохранить</button><span class="note" id="saved"></span></div>
+
+    <h2>Телефония <small>записи загружаются сами по расписанию</small></h2>
+    <div class="card">
+      <label>Оператор<select id="t-provider"><option value="">Не подключена</option></select></label>
+      <details id="t-help"><summary>Где взять ключ</summary><ol id="t-steps"></ol></details>
+      <div class="grid2" id="t-fields"></div>
+      <div class="grid2"><label>Загружать каждые, мин (0 — вручную)<input type="number" id="t-every" min="0" max="1440"></label></div>
+      <div class="row"><button class="primary" id="t-save">Сохранить</button><button class="ghost" id="t-check">Проверить подключение</button><span class="note" id="t-status"></span></div>
+    </div>
+
+    <h2>CRM и уведомления <small>для упущенных сделок и сводок</small></h2>
+    <div class="cards" id="crm"></div>
+
+    <h2>Общий кабинет отдела <small>руководитель и менеджеры смотрят отчёты в браузере</small></h2>
+    <div class="card">
+      <p>Этот компьютер показывает сводку, отчёты по менеджерам и карточки звонков в браузере и принимает записи с других компьютеров — разбор идёт здесь. Доступ — по ключу в ссылке.</p>
+      <div class="grid2"><label>Порт<input type="number" id="team-port" min="1024" max="65535"></label>
+        <label class="check"><input type="checkbox" id="team-lan"> Доступ из локальной сети</label></div>
+      <div class="row"><button class="primary" id="team-go">Запустить кабинет</button><button class="ghost" id="team-stop" hidden>Остановить</button><button class="ghost" id="team-copy" hidden>Скопировать ссылку</button></div>
+      <p class="note" id="team-status"></p>
+    </div>
+
+    <h2>Скоро <small>командная версия в облаке</small></h2>
+    <div class="cards soon">
+      <div class="card"><h3>Облачный кабинет <span class="status">скоро</span></h3><p>Без своего сервера: звонки всех менеджеров в одном кабинете, доступ с телефона. От 490 ₽/мес за менеджера, ранний доступ −50 % на первый год.</p><button class="ghost" id="soon-want">Хочу ранний доступ</button></div>
+    </div>
+  </section>
+</main>
+<div id="toasts" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

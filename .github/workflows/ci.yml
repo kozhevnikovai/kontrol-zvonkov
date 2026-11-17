@@ -1,0 +1,33 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix: { os: [ubuntu-latest, windows-latest, macos-latest] }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      # сквозная проверка на настоящей речи: RuLibriSpeech в телефонном качестве + разговоры DataHive (CC BY 4.0)
+      - uses: actions/cache@v6
+        with: { path: ~/.kz/models, key: asr-models-v1 }
+      - uses: actions/cache@v6
+        with: { path: ~/.kz/datahive, key: data-datahive-v1 }
+      - name: Распознавание звонков на реальной речи
+        shell: bash
+        run: ZVONKI_HOME="$HOME/.kz" ZVONKI_DATA="$HOME/.kz/datahive" ZVONKI_E2E_OUT="$RUNNER_TEMP/e2e" node test/e2e.mjs
+      # самопроверка приложения: окно, обработчик, разбор папки, отчёты HTML/XLSX/PDF, снимок окна
+      - name: Приложение (Electron) — самопроверка
+        shell: bash
+        run: |
+          export ZVONKI_HOME="$HOME/.kz" ZVONKI_ARCHIVE="$RUNNER_TEMP/archive" ZVONKI_OUT="$RUNNER_TEMP/out" ZVONKI_SMOKE="$RUNNER_TEMP/e2e" ZVONKI_SMOKE_OUT="$RUNNER_TEMP"
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npx electron --no-sandbox app/main.mjs; else npx electron app/main.mjs; fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: "e2e-${{ matrix.os }}", path: "${{ runner.temp }}/e2e/e2e.json\n${{ runner.temp }}/smoke.png" }

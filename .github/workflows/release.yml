@@ -1,0 +1,39 @@
+name: release
+on:
+  release: { types: [published] }
+  workflow_dispatch:
+  # ветки release/* — пробная сборка установщиков для ручной проверки (артефакты, без публикации)
+  push: { branches: ["release/**"] }
+permissions: { contents: write }
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: --win }
+          - { os: macos-latest, target: --mac --arm64 }
+          - { os: macos-15-intel, target: --mac --x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build && npm test
+      - name: Установщик приложения
+        run: npx electron-builder ${{ matrix.target }} --publish never
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
+      - name: Расширение для Claude Desktop
+        run: node scripts/build-mcpb.mjs
+      - uses: softprops/action-gh-release@v3
+        if: github.event_name == 'release'
+        with:
+          files: |
+            release/*.exe
+            release/*.zip
+            release/*.dmg
+            build/*.mcpb
+      - uses: actions/upload-artifact@v7
+        if: github.event_name != 'release'
+        with: { name: "build-${{ matrix.os }}", path: "release/*.exe\nrelease/*.zip\nrelease/*.dmg\nbuild/*.mcpb" }

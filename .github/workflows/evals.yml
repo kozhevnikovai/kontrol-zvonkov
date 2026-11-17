@@ -1,0 +1,29 @@
+name: evals
+# Качество оценки звонков локальными моделями на открытых данных (ручной запуск и раз в неделю)
+on:
+  workflow_dispatch:
+    inputs:
+      models: { description: "JSON-список id моделей (пусто — основной набор)", required: false, default: "" }
+      dialogs: { description: "Сколько текстовых диалогов продаж", required: false, default: "20" }
+  schedule: [{ cron: "37 4 * * 1" }]
+jobs:
+  review:
+    strategy:
+      fail-fast: false
+      matrix: { model: "${{ fromJSON(inputs.models || '[\"qwen3-4b\",\"qwen3-14b\"]') }}" }
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env: { ZVONKI_HOME: /home/runner/kz, ZVONKI_GPU: cpu, ZVONKI_LLM_MODEL: "${{ matrix.model }}", ZVONKI_DATA: /home/runner/kz/datahive }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci && npm run build
+      - uses: actions/cache@v6
+        with: { path: ~/kz/models, key: "llm-${{ matrix.model }}-v1" }
+      - run: mkdir -p ~/kz/datahive && pip install pyarrow && python evals/prepare.py evals/sales.json ${{ inputs.dialogs || 20 }}
+      - run: node dist/cli.js models --model ${{ matrix.model }}
+      - run: npm run eval || echo "::warning::${{ matrix.model }} ниже порога"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: "evals-${{ matrix.model }}", path: evals/results.json }
