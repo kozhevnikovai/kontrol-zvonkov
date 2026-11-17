@@ -166,7 +166,7 @@ app.whenReady().then(() => {
 
 // Самопроверка собранного приложения (CI): обработчик, модели распознавания, разбор папки, отчёт, снимок окна
 async function smoke(dir) {
-  const fail = e => { console.error("SMOKE FAIL", e?.message ?? e); app.exit(1); };
+  const fail = e => { console.error("SMOKE FAIL", e?.message ?? e); console.log("::error::SMOKE FAIL " + String(e?.message ?? e).replace(/\r?\n/g, "%0A")); app.exit(1); };
   setTimeout(() => fail("таймаут"), 900_000);
   try {
     await new Promise(r => win.webContents.once("did-finish-load", r));
