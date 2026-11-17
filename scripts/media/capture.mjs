@@ -17,6 +17,8 @@ meta.forEach((m, i) => rows.push(`${m.file_name};Сотрудник ${(i % 3) + 
 for (const m of meta) { const f = join(DATA, m.file_name); if (!existsSync(f)) writeFileSync(f, Buffer.from(await (await fetch(`${DH}/${m.file_name}`)).arrayBuffer())); }
 const exp = resolve(RAW, "выгрузка.csv"); writeFileSync(exp, rows.join("\n"));
 log("звонков", meta.length);
+// --prepare: только скачать записи и выгрузку (оценку моделью в CI делает CLI на Node.js, приложение показывает архив)
+if (process.argv.includes("--prepare")) process.exit(0);
 
 const app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1440, height: 900 } } });
 await app.evaluate(({ BrowserWindow, dialog }, [dir, exp]) => {

@@ -20,6 +20,9 @@ jobs:
         with: { path: ~/kz/models, key: "llm-qwen3-4b-v1" }
       - run: node dist/cli.js models --model qwen3-4b
       - run: npx playwright-core install ffmpeg
+      - run: node scripts/media/capture.mjs --prepare
+      - name: Разбор звонков с оценкой (CLI, Qwen3 4B)
+        run: node dist/cli.js import "$ZVONKI_DATA" --export media/raw/выгрузка.csv
       - run: xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/media/capture.mjs
       - name: Отчёты HTML/XLSX для витрины
         if: always()
