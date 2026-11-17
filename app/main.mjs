@@ -60,7 +60,8 @@ function startWorker() {
     pending.delete(m.id);
     m.error ? p.reject(new Error(m.error)) : p.resolve(m.result);
   });
-  worker.on("exit", code => { if (code) try { appendFileSync(join(home(), "worker.log"), `[${new Date().toISOString()}] обработчик завершился, код ${code}\n`); } catch { /* нет доступа */ } for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
+  worker.on("exit", code => { if (code) try { appendFileSync(join(home(), "worker.log"), `[${new Date().toISOString()}] обработчик завершился, код ${code}\n`); } catch { /* нет доступа */ } const why = code === 132 || code === 3221225501 ? "Языковая модель не запустилась на этом компьютере. Расшифровка и метрики работают: снимите галочку «Оценить по скрипту» или оценивайте звонки в Claude Desktop" : "Обработчик завершился — попробуйте ещё раз";
+    for (const p of pending.values()) p.reject(new Error(why)); pending.clear(); worker = null; });
 }
 function call(method, args) {
   if (!worker) startWorker();
