@@ -6,6 +6,7 @@ on:
       models: { description: "JSON-список id моделей (пусто — основной набор)", required: false, default: "" }
       dialogs: { description: "Сколько текстовых диалогов продаж", required: false, default: "20" }
   schedule: [{ cron: "37 4 * * 1" }]
+  push: { branches: ['evals/**'] }
 jobs:
   review:
     strategy:
