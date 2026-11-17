@@ -1,7 +1,7 @@
 // Съёмка настоящей работы Контроля звонков: открытые телефонные разговоры DataHive (CC BY 4.0, стерео) → разбор в приложении.
 // Имена сотрудников условные («Сотрудник 1–3»): в наборе их нет. Окна выбора папки и файла подменяются в главном процессе.
 import { _electron as electron } from "playwright-core";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 const OUT = "media", RAW = "media/raw", DATA = resolve(process.env.ZVONKI_DATA ?? "media/calls");
 mkdirSync(RAW, { recursive: true }); mkdirSync(DATA, { recursive: true });
@@ -9,7 +9,7 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const DH = "https://huggingface.co/datasets/datahiveai/russian-conversations-sample/resolve/main/preview";
 const meta = (await (await fetch(`${DH}/metadata.jsonl`)).text()).split("\n").filter(Boolean).map(l => JSON.parse(l)).filter(m => m.duration_seconds < 420).slice(0, Number(process.env.MEDIA_CALLS ?? 6));
 const rows = ["Имя файла;Сотрудник;Тип звонка"];
-meta.forEach((m, i) => { rows.push(`${m.file_name};Сотрудник ${(i % 3) + 1};${i % 2 ? "Исходящий" : "Входящий"}`); const f = join(DATA, m.file_name); if (!existsSync(f)) return; });
+meta.forEach((m, i) => rows.push(`${m.file_name};Сотрудник ${(i % 3) + 1};${i % 2 ? "Исходящий" : "Входящий"}`));
 for (const m of meta) { const f = join(DATA, m.file_name); if (!existsSync(f)) writeFileSync(f, Buffer.from(await (await fetch(`${DH}/${m.file_name}`)).arrayBuffer())); }
 const exp = resolve(RAW, "выгрузка.csv"); writeFileSync(exp, rows.join("\n"));
 log("звонков", meta.length);
@@ -41,7 +41,3 @@ await nav("settings"); await snap("app-settings");
 await win.evaluate(() => document.querySelector("main").scrollTo({ top: 1400 })); await win.waitForTimeout(800); await snap("app-settings-2");
 const v = win.video(); await app.close(); copyFileSync(await v.path(), join(RAW, "app.webm"));
 writeFileSync(join(RAW, "timing.json"), JSON.stringify({ minutes: (Date.now() - t0) / 60000, calls: meta.length }));
-// отчёты для витрины
-const home = process.env.ZVONKI_OUT;
-if (home && existsSync(home)) log("отчёты в", home);
-void readFileSync; // конец

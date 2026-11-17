@@ -2,7 +2,6 @@
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const kz = window.kz;
 const EARLY_ACCESS = "https://github.com/kozhevnikovai/kontrol-zvonkov/issues/new?template=early-access.yml";
 
 let st = null;          // status из обработчика
@@ -141,7 +140,7 @@ async function loadCalls() {
   if (!cur) $("#f-mgr").innerHTML = `<option value="">Все менеджеры</option>` + mgrs.map(m => `<option>${esc(m)}</option>`).join("");
   $("#calls-empty").hidden = all.length > 0;
   $("#calls").hidden = !all.length;
-  $("#calls").innerHTML = all.length ? `<tr><th>Дата</th><th>Менеджер</th><th>Клиент</th><th class="num">Длит.</th><th class="num">Балл</th><th>Итог</th><th>О чём</th></tr>` + all.map(c => `<tr data-id="${esc(c.id)}"><td class="num">${ruDT(c.date)}</td><td>${esc(c.manager)}</td><td class="num">${esc(c.client || "—")}</td><td class="num">${dur(c.duration)}</td><td class="num">${score(c.score)}</td><td>${c.outcome ? esc(labels.outcomes[c.outcome] ?? c.outcome) : '<span class="note">не оценён</span>'}${c.missed ? ' <span class="st no">упущена</span>' : ""}</td><td class="note">${esc(c.summary.slice(0, 120))}</td></tr>`).join("") : "";
+  $("#calls").innerHTML = all.length ? `<tr><th>Дата</th><th>Менеджер</th><th>Клиент</th><th class="num">Длит.</th><th class="num">Балл</th><th>Итог</th><th>О чём</th></tr>` + all.map(c => `<tr data-id="${esc(c.id)}"><td>${ruDT(c.date)}</td><td>${esc(c.manager)}</td><td>${esc(c.client || "—")}</td><td class="num">${dur(c.duration)}</td><td class="num">${score(c.score)}</td><td>${c.outcome ? esc(labels.outcomes[c.outcome] ?? c.outcome) : '<span class="note">не оценён</span>'}${c.missed ? ' <span class="st no">упущена</span>' : ""}</td><td class="note">${esc(c.summary.slice(0, 120))}</td></tr>`).join("") : "";
   $$("#calls tr[data-id]").forEach(tr => (tr.onclick = () => openCall(tr.dataset.id)));
   updateMissedBadge();
 }
@@ -155,7 +154,7 @@ async function openCall(id) {
   $("#call").innerHTML = `
     <div class="kicker">Звонок</div>
     <h1>${esc(r.meta.manager)} · ${ruDT(r.meta.date)}</h1>
-    <p class="lead small">${r.meta.direction === "in" ? "Входящий" : r.meta.direction === "out" ? "Исходящий" : ""} · клиент ${esc(r.meta.client || "—")} · ${esc(r.meta.source)}${v ? ` · ${esc(v.model)}` : ""}</p>
+    <p class="lead small">${[r.meta.direction === "in" ? "Входящий" : r.meta.direction === "out" ? "Исходящий" : "", r.meta.client ? "клиент " + esc(r.meta.client) : "", esc(r.meta.source), v && v.model !== "—" ? esc(v.model) : ""].filter(Boolean).join(" · ")}</p>
     <div class="row wrap"><button class="ghost" id="c-file">Открыть запись</button><button class="ghost" id="c-html">Отчёт HTML</button><button class="ghost" id="c-swap">Поменять роли</button><button class="ghost" id="c-re" ${st.missing.some(f => f.startsWith("llm/")) ? "disabled" : ""}>Оценить заново</button><button class="ghost" id="c-mgr">Изменить менеджера</button></div>
     <div class="tile-row" style="grid-template-columns:repeat(5,minmax(0,1fr))">
       <div><b>${v?.score ?? "—"}</b>Балл по скрипту</div><div><b>${dur(m.duration)}</b>Длительность</div><div><b>${m.talkRatio} %</b>Говорит менеджер</div><div><b>${m.questions}</b>Вопросов</div><div><b>${m.interruptions}</b>Перебиваний</div>
@@ -241,7 +240,7 @@ async function updateMissedBadge() {
 async function loadMissed() {
   let all = await core("list", { filter: { missed: true, from: since($("#x-period").value) } });
   if ($("#x-open").checked) all = all.filter(c => !c.followUp);
-  $("#missed").innerHTML = all.length ? `<tr><th>Дата</th><th>Менеджер</th><th>Клиент</th><th>Что сказал клиент</th><th></th></tr>` + all.map(c => `<tr data-id="${esc(c.id)}"><td class="num">${ruDT(c.date)}</td><td>${esc(c.manager)}</td><td class="num">${esc(c.client || "—")}</td><td><q>${esc(c.interest)}</q><div class="note">${esc(c.summary)}</div></td><td><div class="actions">${c.followUp ? `<span class="st yes">${c.followUp.status === "crm" ? "в CRM" : "перезвонили"}</span>` : `<button class="ghost" data-a="crm">В CRM</button><button class="ghost" data-a="done">Перезвонили</button>`}</div></td></tr>`).join("") : `<tr><td class="note">Упущенных сделок нет.</td></tr>`;
+  $("#missed").innerHTML = all.length ? `<tr><th>Дата</th><th>Менеджер</th><th>Клиент</th><th>Что сказал клиент</th><th></th></tr>` + all.map(c => `<tr data-id="${esc(c.id)}"><td>${ruDT(c.date)}</td><td>${esc(c.manager)}</td><td>${esc(c.client || "—")}</td><td><q>${esc(c.interest)}</q><div class="note">${esc(c.summary)}</div></td><td><div class="actions">${c.followUp ? `<span class="st yes">${c.followUp.status === "crm" ? "в CRM" : "перезвонили"}</span>` : `<button class="ghost" data-a="crm">В CRM</button><button class="ghost" data-a="done">Перезвонили</button>`}</div></td></tr>`).join("") : `<tr><td class="note">Упущенных сделок нет.</td></tr>`;
   $$("#missed tr[data-id]").forEach(tr => tr.onclick = async e => {
     const a = e.target.closest("button")?.dataset.a, id = tr.dataset.id;
     if (!a) return openCall(id);

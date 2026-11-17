@@ -16,3 +16,7 @@ q{color:var(--pencil);font-size:13px}q:before{content:"«"}q:after{content:"»"}
 .tpl.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .warnline{color:var(--warn);font-size:13px}
 td .actions{display:flex;gap:6px;flex-wrap:wrap}
+.panel h2,.card h2{margin-top:0}
+.models input{width:auto;flex:none}
+#calls td:first-child,#calls th:first-child,#missed td:first-child{text-align:left}
+input[type=radio],input[type=checkbox]{width:auto}

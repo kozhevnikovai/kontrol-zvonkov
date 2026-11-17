@@ -11,6 +11,7 @@ const pkg = JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8"));
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
+app.commandLine.appendSwitch("lang", "ru");
 if (process.platform === "win32") app.setAppUserModelId("ai.kozhevnikov.kontrol-zvonkov");
 
 // ── Ключи телефонии, CRM и кабинета шифруются средствами ОС (DPAPI / связка ключей), расшифровываются только в памяти
