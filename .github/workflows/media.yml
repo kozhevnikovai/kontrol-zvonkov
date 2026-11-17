@@ -6,6 +6,7 @@ on:
     branches: ['media/**']
     paths: ['.github/workflows/media.yml', 'scripts/media/**']
 permissions: { contents: write }
+concurrency: { group: "media-${{ github.ref }}", cancel-in-progress: true }
 jobs:
   capture:
     runs-on: ubuntu-latest
