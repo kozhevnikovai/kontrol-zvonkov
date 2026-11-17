@@ -230,6 +230,8 @@ describe("оценка: код проверяет цитаты и считает
       expect(v.outcome).toBe("not_sales");
       expect(v.score).toBeNull();
       expect(v.missed).toBe(false);
+      expect(v.advice).toEqual([]);
+      expect(v.interest.quote).toBe("");
     }
   });
   it("не продажа: балла нет, пункты «не применимо»", () => {

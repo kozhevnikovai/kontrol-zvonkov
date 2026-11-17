@@ -232,10 +232,10 @@ export function finalize(raw: Raw, tr: CallTranscript, script: Script, callId: s
   return {
     callId, scriptId: script.id, score, items, objections,
     nextStep: { agreed, text: agreed ? (ns.text ?? "").trim() : "", due: agreed ? parseDue(ns.due || ns.text || ns.quote, date.slice(0, 10)) : null, quote: agreed ? ns.quote.trim() : "", t: agreed ? nsT2 : null },
-    interest: { level, quote: iq !== null ? raw.interest.quote.trim() : "", t: iq },
+    interest: sales ? { level, quote: iq !== null ? raw.interest.quote.trim() : "", t: iq } : { level: "none", quote: "", t: null },
     outcome, missed, missedReason,
     summary: (raw.summary ?? "").trim().slice(0, 600),
-    advice: (raw.advice ?? []).map(s => String(s).trim()).filter(Boolean).slice(0, 3),
+    advice: sales ? (raw.advice ?? []).map(s => String(s).trim()).filter(Boolean).slice(0, 3) : [],
     model, quotes: { total, verified }, warnings,
   };
 }
