@@ -5,7 +5,7 @@ on:
   push:
     branches: ['media/**']
     paths: ['.github/workflows/media.yml', 'scripts/media/**']
-permissions: { contents: read }
+permissions: { contents: write }
 jobs:
   capture:
     runs-on: ubuntu-latest
@@ -30,3 +30,11 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: { name: media, path: "media/" }
+      # результат — в отдельную ветку media-out/<номер запуска> (скачать артефакт без входа в GitHub нельзя)
+      - name: Кадры в ветку media-out
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]" && git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "media-out/${{ github.run_id }}" && git rm -rq --cached . && mkdir -p out
+          cp media/*.png out/ 2>/dev/null || true; cp media/raw/app.webm media/raw/timing.json out/ 2>/dev/null || true; cp -r media/reports out/ 2>/dev/null || true
+          git add -f out && git commit -qm "media: кадры запуска ${{ github.run_id }}" && git push -q origin "media-out/${{ github.run_id }}"
